@@ -1,0 +1,10 @@
+syntax = "proto3";
+package payment.v1;
+option go_package = "example.com/monorepo/gen/go/payment/v1;paymentpb";
+
+service PaymentService {
+  rpc CreatePayment(CreatePaymentRequest) returns (CreatePaymentResponse);
+}
+
+message CreatePaymentRequest { string user_id = 1; int64 amount = 2; }
+message CreatePaymentResponse { string payment_id = 1; }

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: micro
+data:
+  init.sql: |
+    CREATE DATABASE users_db;
+    CREATE DATABASE payments_db;
+    CREATE DATABASE auth_db;
