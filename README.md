@@ -98,13 +98,6 @@ This project demonstrates a modern microservices architecture with:
 ### Prerequisites
 
 - Docker & Docker Daemon running
-- k3d (v5.0+)
-- kubectl
-- Go 1.22+
-- protoc (for regenerating proto files)
-
-### Local Development Setup
-Compose
 - Docker Daemon running
 - Go 1.22+
 - protoc (for regenerating proto files)
@@ -212,22 +205,7 @@ Connect to PostgreSQL:
 make db-shell
 # Or directly:
 docker-compose exec postgres psql -U postgres
-```e
-- `payments_db` - for PaymentService
-- `auth_db` - for AuthService
-
-To add database migrations, create SQL files in the workspace and update the ConfigMap.
-
-## 🔄 Kubernetes Cluster Management
-
-| Command | Purpose |
-|---------|---------|
-| `make k3d-up` | Create development k3d cluster |
-| `make k3d-down` | Destroy the cluster |
-| `make build` | Build all service Docker images |
-| `make import` | Import images into k3d |
-| `make apply` | Deploy services via kustomize |
-| `make restart` | Rolling restart all deployments |
+```
 
 ## Adding a New Service
 
@@ -261,13 +239,9 @@ To add database migrations, create SQL files in the workspace and update the Con
    - Reference existing services as templates
    - Create Dockerfile using multi-stage build pattern
 
-6. **Update Makefile**
-   - Add build target for new service
-   - Update import and restart targets
-
-7. **Create Kubernetes manifests**
-   - Add deployment YAML in `deploy/kustomize/base/`
-   - Reference in `kustomization.yaml`
+6. **Update docker-compose.yml**
+   - Add service definition
+   - Configure environment variables and ports
 
 ## 🧪 Testing
 
@@ -282,16 +256,9 @@ See [TODOs.md](TODOs.md) for planned testing implementation.
 
 ### Check Service Logs
 ```bash
-kubectl logs -n micro deployment/usersvc -f
-kubectl logs -n micro deployment/paymentsvc -f
-kubectl logs -n micro deployment/authsvc -f
-```
-
-### Port Forwarding for Local Testing
-```bash
-kubectl port-forward -n micro svc/usersvc 50051:50051
-kubectl port-forward -n micro svc/paymentsvc 50052:50052
-kubectl port-forward -n micro svc/authsvc 50053:50053
+make logs
+# Or for a specific service:
+make logs-service SERVICE=usersvc
 ```
 
 ### Verify gRPC Connectivity
@@ -302,7 +269,7 @@ grpcurl -plaintext localhost:50051 user.v1.UserService/GetUser
 
 ### Database Connection
 ```bash
-kubectl exec -it statefulset/postgres -n micro -- psql -U postgres
+make db-shell
 ```
 
 ## 🗺️ Roadmap
@@ -311,8 +278,6 @@ See [TODOs.md](TODOs.md) for planned features:
 - Improve README documentation ✓
 - Add Swagger/gRPC gateway support
 - Comprehensive test coverage
-- Resource estimation for k8s cluster
-- Service mesh integration (future)
 - Authentication interceptors
 - Distributed tracing
 
@@ -321,7 +286,6 @@ See [TODOs.md](TODOs.md) for planned features:
 - **Naming**: Snake_case in Proto messages (e.g., `user_id`), camelCase in Go responses
 - **Go Modules**: Each service and library is a separate module with `replace` directives for local dependencies
 - **Port Assignment**: 50051-50053 for services (standard gRPC port range)
-- **Namespace**: All deployments use the `micro` Kubernetes namespace
 - **Error Handling**: Services currently use minimal error handling; add proper error strategies in production
 
 ## 💡 Next Steps
