@@ -1,6 +1,6 @@
 # Go gRPC Microservices Monorepo
 
-A production-ready microservices monorepo built with Go, gRPC, and Kubernetes. Three independent services communicate via gRPC, each backed by its own PostgreSQL database, deployed on a k3d local cluster using kustomize for infrastructure as code.
+A production-ready microservices monorepo built with Go, gRPC, and Docker. Three independent services communicate via gRPC, each backed by its own PostgreSQL database, orchestrated with Docker Compose.
 
 ## 📋 Overview
 
@@ -8,7 +8,7 @@ This project demonstrates a modern microservices architecture with:
 - **Service isolation**: Each service is independently deployable
 - **Shared platform library**: Common utilities for database connections and logging
 - **gRPC communication**: Type-safe, fast inter-service communication
-- **Infrastructure as Code**: Kubernetes manifests with kustomize for environment-based customization
+- **Docker Compose**: Simple orchestration for local development and testing
 - **Multi-module Go**: Organized monorepo structure with clear boundaries
 
 ## 🏗️ Architecture
@@ -54,18 +54,21 @@ This project demonstrates a modern microservices architecture with:
 
 - **Language**: Go 1.22
 - **RPC Framework**: gRPC with Protocol Buffers
-- **Database**: PostgreSQL 15+ (pgx/v5)
+- **Database**: PostgreSQL 16 (pgx/v5)
 - **Container**: Docker with multi-stage builds (distroless base)
-- **Orchestration**: Kubernetes (k3d for local development)
-- **Infrastructure**: Kustomize for manifests management
+- **Orchestration**: Docker Compose
 
 ## 📁 Project Structure
 
 ```
 .
 ├── Makefile                           # Build, deploy, and cluster management
+├── README.md                          # This fileservice management
+├── docker-compose.yml                 # Docker Compose orchestration
 ├── README.md                          # This file
 ├── TODOs.md                           # Project roadmap
+├── scripts/
+│   └── init.sql                       # Database initialization script
 ├── protos/                            # Protocol Buffer definitions
 │   ├── auth/v1/auth.proto
 │   ├── payment/v1/payment.proto
@@ -76,29 +79,19 @@ This project demonstrates a modern microservices architecture with:
 │   └── platform/
 │       ├── db/                        # PostgreSQL connection utilities
 │       └── go.mod
-├── services/                          # Microservices
-│   ├── authsvc/
-│   │   ├── Dockerfile
-│   │   ├── go.mod
-│   │   └── cmd/authsvc/main.go
-│   ├── paymentsvc/
-│   │   ├── Dockerfile
-│   │   ├── go.mod
-│   │   └── cmd/paymentsvc/main.go
-│   └── usersvc/
-│       ├── Dockerfile
-│       ├── go.mod
-│       └── cmd/usersvc/main.go
-└── deploy/                            # Kubernetes manifests
-    └── kustomize/
-        ├── base/                      # Base configuration
-        │   ├── namespace.yaml
-        │   ├── postgres.yaml
-        │   └── kustomization.yaml
-        └── overlays/
-            └── dev/                   # Development environment
-                └── kustomization.yaml
-```
+└── services/                          # Microservices
+    ├── authsvc/
+    │   ├── Dockerfile
+    │   ├── go.mod
+    │   └── cmd/authsvc/main.go
+    ├── paymentsvc/
+    │   ├── Dockerfile
+    │   ├── go.mod
+    │   └── cmd/paymentsvc/main.go
+    └── usersvc/
+        ├── Dockerfile
+        ├── go.mod
+        └── cmd/usersvc/main.go
 
 ## 🚀 Getting Started
 
@@ -111,6 +104,12 @@ This project demonstrates a modern microservices architecture with:
 - protoc (for regenerating proto files)
 
 ### Local Development Setup
+Compose
+- Docker Daemon running
+- Go 1.22+
+- protoc (for regenerating proto files)
+
+### Local Development Setup
 
 1. **Clone the repository**
    ```bash
@@ -118,42 +117,46 @@ This project demonstrates a modern microservices architecture with:
    cd go-grpc-microservices
    ```
 
-2. **Create k3d cluster**
+2. **Start all services**
    ```bash
-   make k3d-up
+   make up
    ```
-   This creates a local Kubernetes cluster named `dev` with one server node and disabled traefik/servicelb.
+   This builds and starts all services (PostgreSQL, usersvc, paymentsvc, authsvc) in Docker containers.
 
-3. **Build Docker images**
+3. **Verify deployment**
    ```bash
-   make build
+   make ps
    ```
-   Builds `usersvc:dev`, `paymentsvc:dev`, and `authsvc:dev` images.
+   Shows the status of all running services.
 
-4. **Import images into k3d**
+4. **View logs**
    ```bash
-   make import
-   ```
-   Loads built images into the k3d cluster.
-
-5. **Deploy services**
-   ```bash
-   make apply
-   ```
-   Deploys all services to the `micro` namespace using kustomize.
-
-6. **Verify deployment**
-   ```bash
-   kubectl get pods -n micro
-   kubectl get svc -n micro
+   make logs
+   # Or for a specific service:
+   make logs-service SERVICE=usersvc
    ```
 
-## 📝 Development Workflow
+### Quick Commands
 
-### Making Changes to Services
+```bash
+# Start services
+make up
 
-1. **Modify proto definitions** (if adding/changing RPCs)
-   ```bash
+# Stop services
+make down
+
+# Rebuild and restart
+make rebuild
+
+# View logs
+make logs
+
+# Stop services and remove volumes
+make down-volumes
+
+# Clean everything (containers, volumes, images)
+make clean
+```bash
    # Edit protos/{service}/v1/{service}.proto
    # Regenerate stubs
    protoc -I protos \
@@ -161,13 +164,7 @@ This project demonstrates a modern microservices architecture with:
      --go-grpc_out=gen/go \
      protos/{service}/v1/{service}.proto
    ```
-
-2. **Update service implementation**
-   ```bash
-   # Edit services/{service}/cmd/{service}/main.go
-   # Build and test
-   docker build -t {service}:dev -f services/{service}/Dockerfile .
-   ```
+```
 
 3. **Update dependencies**
    ```bash
@@ -178,23 +175,44 @@ This project demonstrates a modern microservices architecture with:
 
 4. **Rebuild and redeploy**
    ```bash
+   make rebuild
+   # Or restart specific service:
+   make restart-service SERVICE=usersvcd redeploy**
+   ```bash
    make build
    make import
    make restart
    ```
 
-### Environment Variables
-
-Each service expects the following environment variables:
+### Environment Variables (configured in [docker-compose.yml](docker-compose.yml)):
 
 - `DATABASE_URL`: PostgreSQL connection string
   - Format: `postgres://user:password@host:5432/database_name?sslmode=disable`
-  - Set via Kubernetes deployment manifests in `deploy/kustomize/`
+  - Automatically configured for each service
 
 ### Database Initialization
 
-PostgreSQL is initialized with three databases via `deploy/kustomize/base/postgres.yaml`:
+PostgreSQL is initialized with three databases via [scripts/init.sql](scripts/init.sql):
 - `users_db` - for UserService
+- `payments_db` - for PaymentService
+- `auth_db` - for AuthService
+
+### Accessing Services
+
+Services are exposed on the following ports:
+- **usersvc**: `localhost:50051`
+- **paymentsvc**: `localhost:50052`
+- **authsvc**: `localhost:50053`
+- **PostgreSQL**: `localhost:5432`
+
+### Database Access
+
+Connect to PostgreSQL:
+```bash
+make db-shell
+# Or directly:
+docker-compose exec postgres psql -U postgres
+```e
 - `payments_db` - for PaymentService
 - `auth_db` - for AuthService
 

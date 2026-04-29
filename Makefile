@@ -1,23 +1,53 @@
 SHELL := /bin/bash
-CLUSTER := dev
-NS := micro
 
-k3d-up:
-	k3d cluster create $(CLUSTER) --servers 1 --agents 0 	--k3s-arg "--disable=traefik@server:0" 	--k3s-arg "--disable=servicelb@server:0"
+# Start all services with Docker Compose
+up:
+	docker-compose up -d
 
-k3d-down:
-	k3d cluster delete $(CLUSTER)
+# Stop all services
+down:
+	docker-compose down
 
+# Stop all services and remove volumes
+down-volumes:
+	docker-compose down -v
+
+# Build all service images
 build:
-	docker build -t usersvc:dev -f services/usersvc/Dockerfile .
-	docker build -t paymentsvc:dev -f services/paymentsvc/Dockerfile .
-	docker build -t authsvc:dev -f services/authsvc/Dockerfile .
+	docker-compose build
 
-import:
-	k3d image import usersvc:dev paymentsvc:dev authsvc:dev -c $(CLUSTER)
+# View logs from all services
+logs:
+	docker-compose logs -f
 
-apply:
-	kubectl apply -k deploy/kustomize/overlays/dev
+# View logs from a specific service (e.g., make logs-service SERVICE=usersvc)
+logs-service:
+	docker-compose logs -f $(SERVICE)
 
+# Restart all services
 restart:
-	kubectl -n $(NS) rollout restart deploy/usersvc deploy/paymentsvc deploy/authsvc
+	docker-compose restart
+
+# Restart a specific service (e.g., make restart-service SERVICE=usersvc)
+restart-service:
+	docker-compose restart $(SERVICE)
+
+# Rebuild and restart all services
+rebuild:
+	docker-compose up -d --build
+
+# Show status of all services
+ps:
+	docker-compose ps
+
+# Execute a shell in a service container (e.g., make shell SERVICE=usersvc)
+shell:
+	docker-compose exec $(SERVICE) /bin/sh
+
+# Connect to PostgreSQL database
+db-shell:
+	docker-compose exec postgres psql -U postgres
+
+# Clean up everything (containers, volumes, images)
+clean:
+	docker-compose down -v --rmi local

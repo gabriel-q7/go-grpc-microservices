@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: micro-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - micro-network
+
+  usersvc:
+    build:
+      context: .
+      dockerfile: services/usersvc/Dockerfile
+    container_name: usersvc
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/users_db?sslmode=disable
+    ports:
+      - "50051:50051"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - micro-network
+    restart: unless-stopped
+
+  paymentsvc:
+    build:
+      context: .
+      dockerfile: services/paymentsvc/Dockerfile
+    container_name: paymentsvc
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/payments_db?sslmode=disable
+    ports:
+      - "50052:50051"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - micro-network
+    restart: unless-stopped
+
+  authsvc:
+    build:
+      context: .
+      dockerfile: services/authsvc/Dockerfile
+    container_name: authsvc
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/auth_db?sslmode=disable
+    ports:
+      - "50053:50051"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - micro-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  micro-network:
+    driver: bridge
