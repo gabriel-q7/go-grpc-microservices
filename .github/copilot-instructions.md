@@ -18,7 +18,7 @@ This is a Go-based microservices monorepo with three services: `usersvc`, `payme
 - **Build & Deploy**: `make build` builds Docker images; `make rebuild` rebuilds and restarts all services.
 - **Logs**: `make logs` shows all service logs; `make logs-service SERVICE=usersvc` shows specific service logs.
 - **Restart**: `make restart` restarts all services; `make restart-service SERVICE=usersvc` restarts a specific service.
-- **Environment**: Services expect `DATABASE_URL` for Postgres connection, configured in `docker-compose.yml`.
+- **Environment**: Services expect `DATABASE_URL` for Postgres connection, configured in `compose.yml`.
 - **gRPC Ports**: Services exposed on `localhost:50051` (usersvc), `localhost:50052` (paymentsvc), `localhost:50053` (authsvc).
 
 ## Conventions

@@ -204,7 +204,7 @@ Connect to PostgreSQL:
 ```bash
 make db-shell
 # Or directly:
-docker-compose exec postgres psql -U postgres
+docker compose exec postgres psql -U postgres
 ```
 
 ## Adding a New Service
